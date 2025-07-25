@@ -41,7 +41,7 @@ library(reshape2)
 
 ```{r load}
 Commodity<-read.csv("https://raw.githubusercontent.com/datasets/commodity-prices/refs/heads/main/data/commodity-prices.csv")
-PPI<-read.csv("/Users/mac/Desktop/qtm302w-eda-project/PPIACO.csv")
+PPI<-read.csv("https://raw.githubusercontent.com/kimcardinale/qtm302w-eda-project/refs/heads/main/PPIACO.csv?token=GHSAT0AAAAAADHPI5R6CFX5DLPZ46VMASDW2EDXA2Q")
 ```
 
 
