@@ -41,9 +41,8 @@ library(reshape2)
 
 ```{r load}
 Commodity<-read.csv("https://raw.githubusercontent.com/datasets/commodity-prices/refs/heads/main/data/commodity-prices.csv")
-PPI<-read.csv("https://raw.githubusercontent.com/kimcardinale/qtm302w-eda-project/refs/heads/main/PPIACO.csv?token=GHSAT0AAAAAADHPI5R6CFX5DLPZ46VMASDW2EDXA2Q")
+PPI<-read.csv("https://github.com/kimcardinale/qtm302w-eda-project/blob/d7ba7b915d24af7180918f55ce5ebb5961929ec7/PPIACO.csv")
 ```
-
 
 ## Data Wrangling: Date Formatting, Filtering, Renaming, and Missing Value Check
 This step ensures the dataset is clean and focused on the relevant commodities. We begin by checking the column names and then convert the Date column into proper date format using ymd() from lubridate.
