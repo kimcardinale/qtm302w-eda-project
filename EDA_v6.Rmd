@@ -1,0 +1,263 @@
+---
+title: "EDA Code Notebook"
+author: "Kimberly Cardinale, Noelle Crichton, and William Kong"
+date: "2025-07-17"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Introduction:
+
+Commodity prices play a central role in shaping the global economy. As key inputs for manufacturing, energy, and industrial production, commodities like oil, coal, and natural gas often serve as early indicators of shifts in inflationary pressure. These price movements are later reflected in macroeconomic indicators such as the Producer Price Index (PPI), which tracks the average change in prices received by domestic producers for their goods.
+
+In this exploratory data analysis, we set out to explore how energy-related commodity prices might connect to broader economic trends - specifically, the U.S PPI over the years 1992 to 2016. We chose to focus on three major players in the energy sector: crude oil, coal, and natural gas. These resources power much of the global economy, and shifts in their prices can ripple through industries, reflecting everything from supply disruptions to changing consumer demand.
+
+Rather than testing a specific hypothesis, our approach is more open-ended. We aim to understand trends, anomalies, and possible correlations that could guide further quantitative research. One question we are especially interested in is whether changes in commodity prices tend to precede changes in PPI, suggesting a potential lead-lag effect. To explore this, we rely on descriptive statistics, visualizations, and correlation analysis.
+
+Our project draws on two publicly available datasets, each with distinct origins and methodological assumptions:
+
+### 1. Commodity Prices
+The commodity prices dataset used in this project originates from the **International Monetary Fund (IMF)** and is republished via a [GitHub repository maintained by the “datasets” project](https://github.com/datasets/commodity-prices/tree/main). It contains monthly prices for 53 commodities and 10 indexes from 1980 to 2016, with index values benchmarked to 2005 = 100, meaning that values are scaled relative to that base year. The IMF compiled this data to track long-term trends in global commodity markets across energy, metals, and agriculture sectors.
+
+The dataset tracks long-term trends across global markets for energy, metals, and agricultural goods. Prices are given in U.S. dollars, using standardized units such as barrels or metric tons. While the dataset offers wide coverage, it does not include detailed metadata on collection methods for each specific commodity. For example, regional or contract differences (e.g., Brent vs. WTI crude) are not distinguished.
+
+For our purposes, we focus on three energy-related series:
+
+1. Crude Oil (petroleum)
+
+2. Coal
+
+3. Fuel Energy Index (used as a proxy for natural gas due to limited standalone gas data)
+
+It is important to recognize the limitations of the dataset. Since prices are aggregated globally, local or regional price fluctuations can be hidden. Additionally, because the dataset was last updated in March of 2016, it does not capture more recent market dynamics or disruptions such as those caused by the COVID-19 pandemic or the 2021-2023 global energy crisis. Nonetheless, this dataset offers a valuable historical perspective for examining broad economic connections between commodity markets and inflation trends.
+
+### 2. Producer Price Index (PPI)
+This index is sourced via FRED from the U.S. Bureau of Labor Statistics (BLS). It measures the average change over time in the selling prices received by U.S. producers. For our purposes, we use the PPIACO series, which aggregates across the commodity-producing sectors of the U.S. economy.
+
+The PPI is widely used as a measure of upstream inflation. However, it excludes service industries and imported goods, which introduces some limitations to its comprehensiveness. Furthermore, the PPI's responsiveness to external shocks—like oil embargoes or supply chain disruptions—can vary by industry.
+
+Together, these datasets allow us to investigate the temporal relationship between global energy prices and domestic producer price trends.
+
+
+## Loading Packages and Commodity Data
+```{r}
+library(tidyverse)
+library(data.table)
+library(lubridate)
+library(ggcorrplot)
+library(quantmod)
+library(reshape2)
+```
+
+```{r load}
+Commodity<-read.csv("https://raw.githubusercontent.com/datasets/commodity-prices/refs/heads/main/data/commodity-prices.csv")
+PPI<-read.csv("https://raw.githubusercontent.com/kimcardinale/qtm302w-eda-project/d7ba7b915d24af7180918f55ce5ebb5961929ec7/PPIACO.csv")
+```
+
+## Data Wrangling: Date Formatting, Filtering, Renaming, and Missing Value Check
+This step ensures the dataset is clean and focused on the relevant commodities. We begin by checking the column names and then convert the Date column into proper date format using ymd() from lubridate.
+
+We filter the dataset to include only observations from 1992 to 2017, since earlier years contain missing values for Natural Gas. From the 64-column dataset, we isolate three key variables: Crude Oil, Natural Gas (stored in Fuel.Energy.Index), and Coal. The selected columns are renamed for easier reference, and we confirm the dataset’s structure using summary() and head().
+
+```{r sum}
+# Convert Date to proper format and extract Year-Month string
+Commodity <- Commodity %>%
+  mutate(Date = ymd(Date))
+
+# Subset only energy-related commodities
+energy_data <- Commodity %>%
+  filter(Date >= ymd("1992-01-01") & Date <= ymd("2016-06-30")) %>%
+  select(Date, `Crude.Oil.petroleum`, `Fuel.Energy.Index`, Coal)
+
+# Rename columns
+colnames(energy_data) <- c("Date", "CrudeOil", "NaturalGas", "Coal")
+
+# Preview
+head(energy_data)
+colnames(PPI)
+```
+
+``` {r ppi}
+PPI <- PPI %>%
+  rename(Date = observation_date) %>%     # rename the column
+  mutate(Date = ymd(Date)) %>%            # convert to Date format
+  filter(Date >= ymd("1992-01-01") & Date <= ymd("2016-06-30"))
+
+merged_data <- inner_join(energy_data, PPI, by = "Date") 
+# Preview merged data
+head(merged_data)
+```
+
+
+## 4. Summarize and Reshape Data
+
+```{r 3}
+summary(merged_data)
+head(merged_data)
+```
+
+## 5. Visualize Distributions
+
+## Transforming Data to Long Format for Plotting
+To facilitate visualization using ggplot2, we reshape the data from wide to long format. This step is important for plotting multiple commodities in a single figure using facet_wrap() or color grouping.
+
+```{r reshape}
+# Reshape to long format for visualization
+all_long <- merged_data %>%
+  select(Date, CrudeOil, NaturalGas, Coal, PPIACO) %>%
+  pivot_longer(cols = -Date, names_to = "Index", values_to = "Price")
+str(all_long)
+```
+## Time Series Analysis of Longitudinal Price Changes in Energy Commodities
+To examine long-term trends, we plot each commodity’s price over time. This time series visualization helps us spot major global events or market shifts that caused sudden price changes. It's also useful for identifying patterns or cycles in the data.
+```{r basic}
+# Distribution of each commodity price over time
+ggplot(all_long, aes(x = Date, y = Price, color = Index)) +
+  geom_line() +
+  theme_minimal() +
+  labs(
+    title = "Energy Commodities and PPI Over Time (1992–2016)",
+    x = "Date",
+    y = "Price / Index Value",
+    color = "Asset"
+  )
+```
+
+
+```{r}
+merged_data_long <- merged_data %>%
+  pivot_longer(cols = c(CrudeOil, NaturalGas, Coal, PPIACO), names_to = "Asset", values_to = "Price")
+
+ggplot(merged_data_long, aes(x = Price)) +
+  geom_histogram(bins = 30, fill = "steelblue", color = "white") +
+  facet_wrap(~Asset, scales = "free") +
+  theme_minimal() +
+  labs(title = "Distribution of Commodity and Equity Prices", x = "Price", y = "Frequency")
+```
+
+## 6. Descriptive Statistics
+
+```{r 2}
+merged_data %>%
+  select(CrudeOil, NaturalGas, Coal, PPIACO) %>%
+  summarise_all(list(mean = mean, median = median, sd = sd), na.rm = TRUE)
+```
+
+## 7. Correlation Analysis
+
+```{r 5}
+# Calculate correlation matrix
+cor_matrix <- merged_data %>%
+  select(CrudeOil, NaturalGas, Coal, PPIACO) %>%
+  cor(use = "complete.obs")
+cor_melted <- melt(cor_matrix)
+
+ggplot(cor_melted, aes(Var1, Var2, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  geom_text(aes(label = round(value, 2)), color = "black", size = 4) +
+  theme_minimal() +
+  labs(title = "Correlation Heatmap", x = "", y = "")
+```
+
+Lagged Correlation Analysis
+```{r lagged cor}
+lagged_df <- merged_data %>%
+  select(Date, CrudeOil, NaturalGas, Coal, PPIACO) %>%
+  mutate(
+    CrudeOil_lag1 = lag(CrudeOil, 1),
+    CrudeOil_lead1 = lead(CrudeOil, 1),
+    
+    NaturalGas_lag1 = lag(NaturalGas, 1),
+    NaturalGas_lead1 = lead(NaturalGas, 1),
+    
+    Coal_lag1 = lag(Coal, 1),
+    Coal_lead1 = lead(Coal, 1)
+  )
+
+cor_results <- tibble(
+  Commodity = c("Crude Oil", "Crude Oil", "Crude Oil",
+                "Natural Gas", "Natural Gas", "Natural Gas",
+                "Coal", "Coal", "Coal"),
+  Lag = c("-1 month", "0 month", "+1 month",
+          "-1 month", "0 month", "+1 month",
+          "-1 month", "0 month", "+1 month"),
+  Correlation = c(
+    cor(lagged_df$CrudeOil_lag1, lagged_df$PPIACO, use = "complete.obs"),
+    cor(lagged_df$CrudeOil, lagged_df$PPIACO, use = "complete.obs"),
+    cor(lagged_df$CrudeOil_lead1, lagged_df$PPIACO, use = "complete.obs"),
+    
+    cor(lagged_df$NaturalGas_lag1, lagged_df$PPIACO, use = "complete.obs"),
+    cor(lagged_df$NaturalGas, lagged_df$PPIACO, use = "complete.obs"),
+    cor(lagged_df$NaturalGas_lead1, lagged_df$PPIACO, use = "complete.obs"),
+    
+    cor(lagged_df$Coal_lag1, lagged_df$PPIACO, use = "complete.obs"),
+    cor(lagged_df$Coal, lagged_df$PPIACO, use = "complete.obs"),
+    cor(lagged_df$Coal_lead1, lagged_df$PPIACO, use = "complete.obs")
+  )
+)
+
+library(knitr)
+kable(cor_results, digits = 3, caption = "Lagged Correlation Between Energy Commodities and PPIACO")
+
+```
+
+rolling correlation analysis
+```{r lag effect}
+roll_cor <- function(x, y, window = 12) {
+  rollapplyr(1:length(x), width = window, FUN = function(i) {
+    cor(x[i:(i + window - 1)], y[i:(i + window - 1)], use = "complete.obs")
+  }, by = 1, fill = NA)
+}
+
+merged_data <- merged_data %>%
+  mutate(roll_cor_crude = roll_cor(CrudeOil, PPIACO, 12),
+         roll_cor_gas = roll_cor(NaturalGas, PPIACO, 12),
+         roll_cor_coal = roll_cor(Coal, PPIACO, 12))
+
+
+# Reshape rolling correlations into long format
+roll_long <- merged_data %>%
+  select(Date, roll_cor_crude, roll_cor_gas, roll_cor_coal) %>%
+  rename(CrudeOil = roll_cor_crude,
+         NaturalGas = roll_cor_gas,
+         Coal = roll_cor_coal) %>%
+  pivot_longer(cols = -Date, names_to = "Commodity", values_to = "RollingCorrelation")
+
+
+#Plot
+ggplot(roll_long, aes(x = Date, y = RollingCorrelation, color = Commodity)) +
+  geom_line(size = 0.5) +
+  labs(
+    title = "12-Month Rolling Correlation with PPIACO (1992–2016)",
+    x = "Date",
+    y = "Rolling Correlation",
+    color = "Commodity"
+  ) +
+  theme_minimal()
+```
+crude oil -- mostly strong positive
+natural gas -- second strong positive
+coal -- weaker/volatile
+
+## Conclusion
+
+This exploratory analysis investigated the relationship between energy-related commodity prices—Crude Oil, Natural Gas, and Coal—and the Producer Price Index (PPI) from 1992 to 2016. Our motivation stemmed from the economic intuition that changes in commodity prices, which represent upstream production inputs, often precede changes in PPI, which reflects output prices at the producer level.
+
+After wrangling and aligning datasets from the IMF and U.S. Bureau of Labor Statistics, we performed a series of descriptive and correlation analyses. The correlation heatmap revealed that Crude Oil and Coal show relatively strong positive correlations with PPI, while Natural Gas shows a weaker but still positive relationship.
+
+More importantly, our cross-correlation and rolling correlation analyses** uncovered temporal dynamics: Crude Oil and Natural gas exhibit leading relationships, with correlation peaks occurring when these commodity indices are lagged by 1–2 months ahead of PPI. This supports the hypothesis that commodity price movements prelude inflationary changes in producer-level output.
+
+These findings have broader implications for economic forecasting and inflation monitoring. Analysts, policymakers, and investors may consider energy commodity trends as early signals of shifts in inflationary pressure at the production level.
+
+Further research could incorporate other upstream indexes (e.g., metals, agricultural inputs), use monthly % changes or log returns, or explore predictive modeling frameworks based on these observed lead-lag structures.
+
+
+
+
