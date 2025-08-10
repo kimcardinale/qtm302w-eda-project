@@ -20,6 +20,8 @@ The purpose of this project is to explore potential connections between global e
 * ggcorrplot
 * quantmod
 * reshape2
+* scales
+* viridisLite
 
 ## Project Description
 This project analyzes historical datasets for commodity prices and the U.S. Producer Price Index (PPI) to answer the research question:
