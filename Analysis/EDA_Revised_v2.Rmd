@@ -9,6 +9,7 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
 library(tidyverse)
 library(data.table)
 library(lubridate)
@@ -101,19 +102,21 @@ head(merged_data)
 
 ## 4. Understanding the Dataset: Summary Statistics and Distributions
 
-After merging the datasets, we begin by examining basic summary statistics to understand the overall structure and range of values. We use the `summary()` function to get a view of each variable’s distribution, including minimum, maximum, mean, and quartile values.
+After obtaining the datasets, We begin by develop an initial understanding of the data’s distribution, central tendencies, and trends over time. To this goal, we compute summary statistics for a basic understanding of the data, plot histograms to examine the distributions of different values, and create time-series graphs to visualize trends over time.
+
+we first examine the basic summary statistics to understand the overall structure and range of values. We use the `summary()` function to get a view of each variable’s distribution, including minimum, maximum, mean, and quartile values. The goal is to grasp a general understanding of the data distribution. 
 
 ```{r summary-table, warning=FALSE}
 # Display summary statistics for each variable in the merged dataset
 summary(merged_data)
 ```
 
-The summary statistics reveal key characteristics of the dataset. Between 1992 and 2016, the three energy commodity indices—Crude Oil, Natural Gas, and Coal—each range from roughly 20 to 250. Coal has a slightly lower maximum value at around 195, but overall the three indices are on a comparable scale. This similarity in magnitude allows for easier visual comparison without the need for normalization.
+The summary statistics reveal key characteristics of the dataset. Between 1992 and 2016, the three energy commodity indices—Crude Oil, Natural Gas, and Coal—each range from roughly 20 to 250. Coal has a slightly lower maximum value at around 195, but overall the three indices are on a comparable scale. This similarity in magnitude allows for easier visual comparison without the need for normalization. The result here prompts us to visualization
 
 
 ### Distribution Visualization
 
-To further explore the dataset, we next examine how these variables are distributed over time. Before plotting, we reshape the data (via `tidyr` from the `tidyverse` package) into a long format to facilitate multi-series visualizations.
+To further explore the dataset, we next examine how these variables are distributed over time using histogram and time-series graph. Before plotting, we reshape the data (via `tidyr` from the `tidyverse` package) into a long format to facilitate multi-series visualizations.
 
 ```{r reshape, echo=FALSE, message=FALSE, warning=FALSE}
 # Reshape to long format for visualization
@@ -125,7 +128,7 @@ all_long <- merged_data %>%
 str(all_long)
 ```
 
-Our first visualization explores the range and variability in price levels for each commodity and for the PPI. To do this, we use histograms with 30 bins, which group the continuous price data into intervals and display the frequency of observations within each range. This helps us assess the distribution shape and compare the spread across variables.
+The hisogram explores the range and variability in price levels for each commodity and for the PPI. To do this, we use histograms with 30 bins, which group the continuous price data into intervals and display the frequency of observations within each range. This helps us assess the distribution shape and compare the spread across variables.
 
 We begin by reshaping the dataset into long format for easier plotting:
 
@@ -205,11 +208,11 @@ Coal, while still showing some correlation—particularly around 2008—tends to
 
 On the other hand, PPI follows a gradual, steady upward trajectory, with only a minor dip around 2008. This reflects the nature of the Producer Price Index: it incorporates a broad range of domestic input prices and tends to respond more slowly to short-term commodity price shocks. Its relative stability underscores its role as a trailing indicator of inflation rather than a leading one.
 
+With the basic statistical summary, histogram, and time-series analysis, we now have enough foundation to quantify correlations and explore potential lead–lag relationships between the Commodity Price and PPI
+
 ## 5. Lead or Lag: Correlation Analysis
 
-Our previous section investigates the \textit{variance} of individual variables — each commodity index and the PPI — over time. To gain a better understanding of how commodity prices influence the PPI, it is essential to analyze the \textit{covariance} between these two variables. Specifically, we want to assess the strength of the relationship between each commodity index and the PPI, as well as the time lag involved in the transmission of price changes from commodities to producer prices.
-
-To visualize these relationships and their strength, we use a correlation matrix represented as a heat map. In this heat map, the intensity of the color corresponds to the magnitude of the correlation, with deeper colors indicating stronger associations between the variables.
+Our previous section investigates the \textit{variance} of individual variables — each commodity index and the PPI — over time. To gain a better understanding of how commodity prices influence the PPI, it is essential to analyze the \textit{covariance} between these two variables. Specifically, we want to assess the strength of the relationship between each commodity index and the PPI, as well as the time lag involved in the transmission of price changes from commodities to producer prices. To this goal, we first  measure the overall strength and direction of the relationships using static correlations, then understand the potential lead–lag effects using lagged correlations, and tracks how the correlation changes over time to identify periods of stronger or weaker association through 12-month rolling correlations analysis. 
 
 ```{r correlation-matrix}
 # Correlation + order variables by clustering
@@ -254,7 +257,7 @@ The correlation heat map reveals that all three energy indices exhibit strong po
 
 Notably, Natural Gas and Crude Oil show a perfect correlation of 1 with each other. This unusual finding could indicate either a strong structural similarity causing their prices to move in tandem or potential issues with the data accuracy.
 
-Having established these strong correlations, we move on to examine the timing of these relationships. Specifically, we want to investigate whether changes in commodity prices tend to lead, coincide with, or lag changes in the PPI. To explore this, we first employ the method of **lagged correlation analysis**, which provides us with data to show the correlations between each commodity index and the PPI across preceding, current, and following months. This approach enables us to differentiate between leading, synchronous, and lagging effects of commodity prices on the PPI, as well as identify which commodity is the most reliable predictor of future producer price movements.
+The static analsyis, however, does not reveal the dynamic nature of the Commodity Price and PPI relationship. Therefore, we move on to examine the timing of these relationships. Specifically, we want to investigate whether changes in commodity prices tend to lead, coincide with, or lag changes in the PPI. To explore this, we first employ the method of **lagged correlation analysis**, which provides us with data to show the correlations between each commodity index and the PPI across preceding, current, and following months. This approach enables us to differentiate between leading, synchronous, and lagging effects of commodity prices on the PPI, as well as identify which commodity is the most reliable predictor of future producer price movements.
 
 ```{r lagged-correlation}
 lagged_df <- merged_data %>%
@@ -319,7 +322,7 @@ ggplot(cor_results, aes(x = Lag, y = Correlation, fill = Lag)) +
 
 The results indicate that for Crude Oil, Natural Gas, and Coal, the strongest correlation with the PPI occurs when the commodity prices lead by one month. Natural Gas exhibits the highest correlation at this lag (0.946), followed closely by Crude Oil (0.942), while Coal shows a substantially lower correlation of 0.840. These findings suggest that Crude Oil and Natural Gas both exhibit strong ***leading** relationships with the PPI, meaning that movements in their prices may serve as effective early indicators of shifts in producer prices—and, by extension, inflationary pressures. In contrast, Coal appears to have more limited predictive value in this regard.
 
-While this analysis offers a static and aggregate view of the timing and strength of correlations, these relationships are not fixed. Correlations between commodity prices and the PPI can shift in response to changing market dynamics. To capture these fluctuations, we turn to **rolling correlation analysis**, which tracks how the strength and direction of correlations evolve over time. This method allows us to pinpoint periods when the predictive relationship between commodity indices and the PPI becomes particularly strong or weak.
+While this analysis offers an aggregate view of the timing and strength of correlations, these relationships are not fixed. Correlations between commodity prices and the PPI can shift in response to changing market dynamics. To capture these fluctuations, we turn to **rolling correlation analysis**, which tracks how the strength and direction of correlations evolve over time. This method allows us to pinpoint periods when the predictive relationship between commodity indices and the PPI becomes particularly strong or weak.
 
 Specifically, the rolling correlation is calculated using a 12-month moving window. By averaging the correlation within each window and sequentially shifting it forward by one month, we smooth short-term noise and uncover meaningful temporal trends in the link between commodity prices and producer price inflation.
 
@@ -393,6 +396,6 @@ U.S. Bureau of Labor Statistics. 2016. *Producer Price Index for All Commodities
 Update since last version: 
 1. Introduction: State the focus more clearly the goal and leads into the introduction for commodity price and PPI; also show the limitation of the dataset without mentioning "“it is important to recognize"
 2. Added Signpost at the end of the introduction
-3. Transition between sections: 
+3. Transition between sections: add transition between sections and visualizations using the following format 1. Goal, 2. Method to achieve this goal, 3. Result, 4. What the result motivates us for the next step. At the same time, we keep the transition smooth and not stiff. 
 4. Plots: for each visualization, added the title as the leading question, subtitle to explain the content of the graph, caption to show any additional comment, and unified the color & fonts across graph. the goal is to make the plots more self-explanatory with clearly stated goal and method. 
 5. Conclusion: ditch the implication for policymakers; lead the conclusion to the final research topic. 
