@@ -34,7 +34,7 @@ To explore how movements in global energy markets influence domestic production 
 1. Clone this repo (for help see this [tutorial](https://help.github.com/articles/cloning-a-repository/)).
 2. Raw data is located in `data/raw/` within this repo.
 3. Processed data is in `data/processed/`.
-4. EDA notebook files (`.Rmd` source file and rendered `.html` report)  are located in `notebooks/`.
+4. EDA notebook files (`.Rmd` source file and rendered `.html` report)  are located in the meta folder.
 5. To run the analysis interactively, open the R Markdown file in RStudio.
 
 ## Featured Notebooks/Analysis/Deliverables
